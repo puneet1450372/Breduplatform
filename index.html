@@ -558,10 +558,7 @@
                             <label for="videoCategory">Category</label>
                             <select id="videoCategory" required>
                                 <option value="">Select Category</option>
-                                <option value="mathematics">Mathematics</option>
-                                <option value="science">Science</option>
-                                <option value="english">English</option>
-                                <option value="history">History</option>
+                                <!-- Categories will be populated dynamically -->
                             </select>
                         </div>
                         <div class="form-group">
@@ -570,6 +567,33 @@
                         </div>
                         <button type="submit" class="btn btn-primary">Add Video</button>
                     </form>
+                </div>
+
+                <!-- Category Management Subsection -->
+                <div class="admin-section">
+                    <h3>🏷️ Manage Categories</h3>
+                    
+                    <!-- Add New Category -->
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                        <h4>Add New Category</h4>
+                        <form id="addCategoryForm">
+                            <div style="display: flex; gap: 10px; align-items: end; flex-wrap: wrap;">
+                                <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
+                                    <label for="newCategoryName">Category Name</label>
+                                    <input type="text" id="newCategoryName" placeholder="e.g., Computer Science" required/>
+                                </div>
+                                <button type="submit" class="btn btn-primary" style="height: fit-content;">➕ Add Category</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Current Categories List -->
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                        <h4>Current Categories</h4>
+                        <div id="categoriesList">
+                            <!-- Categories will be populated here -->
+                        </div>
+                    </div>
                 </div>
 
                 <!-- User Management Subsection -->
@@ -663,6 +687,14 @@
             }
         ];
 
+        // Categories management
+        let categories = [
+            { id: 1, name: 'mathematics', displayName: 'Mathematics', createdBy: 1 },
+            { id: 2, name: 'science', displayName: 'Science', createdBy: 1 },
+            { id: 3, name: 'english', displayName: 'English', createdBy: 1 },
+            { id: 4, name: 'history', displayName: 'History', createdBy: 1 }
+        ];
+
         let videos = [
             {
                 id: 1,
@@ -743,6 +775,7 @@
             document.getElementById('loginFormElement').addEventListener('submit', handleLogin);
             document.getElementById('registerFormElement').addEventListener('submit', handleRegister);
             document.getElementById('addVideoForm').addEventListener('submit', handleAddVideo);
+            document.getElementById('addCategoryForm').addEventListener('submit', handleAddCategory);
             document.getElementById('updateAccessBtn').addEventListener('click', handleUpdateAccess);
 
             // File upload
@@ -980,25 +1013,30 @@
                 return;
             }
 
-            videoGrid.innerHTML = videosToShow.map(video => `
-                <article class="video-card">
-                    <div class="video-player">
-                        ${getVideoPreview(video)}
-                    </div>
-                    <h4>${video.title}</h4>
-                    <p><strong>Category:</strong> ${video.category}</p>
-                    <p>${video.description}</p>
-                    <div style="display: flex; gap: 10px; align-items: center; margin: 10px 0;">
-                        <small style="color: #666;">
-                            ${video.duration || 'N/A'} • ${video.fileSize || 'Unknown size'}
-                        </small>
-                    </div>
-                    <div style="display: flex; gap: 10px; margin-top: 15px;">
-                        <button class="btn btn-primary" onclick="playVideo('${video.id}')" style="flex: 1;">▶️ Watch</button>
-                        <button class="btn btn-download" onclick="downloadVideo('${video.id}')">📥</button>
-                    </div>
-                </article>
-            `).join('');
+            videoGrid.innerHTML = videosToShow.map(video => {
+                const category = categories.find(c => c.name === video.category);
+                const categoryDisplay = category ? category.displayName : video.category;
+                
+                return `
+                    <article class="video-card">
+                        <div class="video-player">
+                            ${getVideoPreview(video)}
+                        </div>
+                        <h4>${video.title}</h4>
+                        <p><strong>Category:</strong> ${categoryDisplay}</p>
+                        <p>${video.description}</p>
+                        <div style="display: flex; gap: 10px; align-items: center; margin: 10px 0;">
+                            <small style="color: #666;">
+                                ${video.duration || 'N/A'} • ${video.fileSize || 'Unknown size'}
+                            </small>
+                        </div>
+                        <div style="display: flex; gap: 10px; margin-top: 15px;">
+                            <button class="btn btn-primary" onclick="playVideo('${video.id}')" style="flex: 1;">▶️ Watch</button>
+                            <button class="btn btn-download" onclick="downloadVideo('${video.id}')">📥</button>
+                        </div>
+                    </article>
+                `;
+            }).join('');
         }
 
         function getVideoPreview(video) {
@@ -1021,12 +1059,13 @@
 
         function loadCategoryTabs() {
             const categoryTabs = document.getElementById('categoryTabs');
-            const categories = [...new Set(videos.filter(v => 
-                currentUser.access.includes(v.category)).map(v => v.category))];
+            const userCategories = categories.filter(cat => 
+                videos.some(v => v.category === cat.name && currentUser.access.includes(v.category))
+            );
 
             categoryTabs.innerHTML = `
                 <button class="tab active" data-category="all">All Content</button>
-                ${categories.map(cat => `<button class="tab" data-category="${cat}">${cat}</button>`).join('')}
+                ${userCategories.map(cat => `<button class="tab" data-category="${cat.name}">${cat.displayName}</button>`).join('')}
             `;
 
             categoryTabs.querySelectorAll('.tab').forEach(tab => {
@@ -1049,6 +1088,9 @@
             const video = videos.find(v => v.id == videoId);
             if (!video) return;
 
+            const category = categories.find(c => c.name === video.category);
+            const categoryDisplay = category ? category.displayName : video.category;
+
             const videoUrl = getVideoUrl(video);
             if (!videoUrl || videoUrl === '#') {
                 alert('Video file not available.');
@@ -1057,7 +1099,7 @@
 
             document.getElementById('modalVideoTitle').textContent = video.title;
             document.getElementById('modalVideoDescription').innerHTML = `
-                <p><strong>Category:</strong> ${video.category}</p>
+                <p><strong>Category:</strong> ${categoryDisplay}</p>
                 <p><strong>Duration:</strong> ${video.duration || 'Unknown'}</p>
                 <p><strong>Description:</strong> ${video.description}</p>
             `;
@@ -1114,6 +1156,129 @@
         function loadAdminContent() {
             loadUserSelect();
             loadAdminVideoList();
+            loadCategoriesForAdmin();
+            loadCategoriesList();
+        }
+
+        function loadCategoriesForAdmin() {
+            // Update video category dropdown
+            const videoCategory = document.getElementById('videoCategory');
+            videoCategory.innerHTML = `
+                <option value="">Select Category</option>
+                ${categories.map(cat => `<option value="${cat.name}">${cat.displayName}</option>`).join('')}
+            `;
+
+            // Update user access checkboxes
+            const categoryCheckboxes = document.getElementById('categoryCheckboxes');
+            categoryCheckboxes.innerHTML = categories.map(cat => `
+                <div class="checkbox-item">
+                    <input type="checkbox" id="${cat.name}-access" value="${cat.name}"/>
+                    <label for="${cat.name}-access">${cat.displayName}</label>
+                </div>
+            `).join('');
+        }
+
+        function loadCategoriesList() {
+            const categoriesList = document.getElementById('categoriesList');
+            
+            if (categories.length === 0) {
+                categoriesList.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">No categories available.</p>';
+                return;
+            }
+
+            categoriesList.innerHTML = categories.map(category => {
+                const videoCount = videos.filter(v => v.category === category.name).length;
+                const canDelete = videoCount === 0; // Only allow deletion if no videos use this category
+                
+                return `
+                    <div class="user-item" style="background: white; border-radius: 5px; margin-bottom: 8px; padding: 12px;">
+                        <div>
+                            <strong>${category.displayName}</strong>
+                            <br>
+                            <small style="color: #666;">
+                                ${videoCount} video${videoCount !== 1 ? 's' : ''} • 
+                                Created by ${users.find(u => u.id === category.createdBy)?.name || 'Unknown'}
+                            </small>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            ${canDelete ? 
+                                `<button class="btn btn-secondary" onclick="deleteCategory(${category.id})" style="padding: 5px 12px; font-size: 12px;">🗑️ Delete</button>` :
+                                `<span style="font-size: 12px; color: #999; padding: 5px;">Cannot delete (has videos)</span>`
+                            }
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function handleAddCategory(e) {
+            e.preventDefault();
+            const categoryName = document.getElementById('newCategoryName').value.trim();
+            
+            if (!categoryName) {
+                alert('Please enter a category name.');
+                return;
+            }
+
+            // Create a URL-friendly name
+            const urlFriendlyName = categoryName.toLowerCase()
+                .replace(/[^a-z0-9\s]/g, '') // Remove special characters
+                .replace(/\s+/g, '_') // Replace spaces with underscores
+                .replace(/_+/g, '_') // Replace multiple underscores with single
+                .replace(/^_|_$/g, ''); // Remove leading/trailing underscores
+
+            // Check if category already exists
+            if (categories.some(cat => cat.name === urlFriendlyName || cat.displayName.toLowerCase() === categoryName.toLowerCase())) {
+                alert('A category with this name already exists.');
+                return;
+            }
+
+            // Add new category
+            const newCategory = {
+                id: Math.max(...categories.map(c => c.id), 0) + 1,
+                name: urlFriendlyName,
+                displayName: categoryName,
+                createdBy: currentUser.id
+            };
+
+            categories.push(newCategory);
+            
+            // Refresh admin displays
+            loadCategoriesForAdmin();
+            loadCategoriesList();
+            
+            // Clear form
+            document.getElementById('newCategoryName').value = '';
+            
+            alert(`Category "${categoryName}" added successfully!`);
+        }
+
+        function deleteCategory(categoryId) {
+            const category = categories.find(c => c.id === categoryId);
+            if (!category) return;
+
+            // Double-check no videos use this category
+            const videosUsingCategory = videos.filter(v => v.category === category.name);
+            if (videosUsingCategory.length > 0) {
+                alert(`Cannot delete "${category.displayName}" because ${videosUsingCategory.length} video(s) are using this category. Please remove or recategorize those videos first.`);
+                return;
+            }
+
+            if (confirm(`Are you sure you want to delete the category "${category.displayName}"?`)) {
+                // Remove category
+                categories = categories.filter(c => c.id !== categoryId);
+                
+                // Remove category access from all users
+                users.forEach(user => {
+                    user.access = user.access.filter(access => access !== category.name);
+                });
+                
+                // Refresh admin displays
+                loadCategoriesForAdmin();
+                loadCategoriesList();
+                
+                alert(`Category "${category.displayName}" deleted successfully!`);
+            }
         }
 
         function loadUserSelect() {
@@ -1129,18 +1294,23 @@
         function loadAdminVideoList() {
             const adminVideoList = document.getElementById('adminVideoList');
 
-            adminVideoList.innerHTML = videos.map(video => `
-                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
-                    <h4>${video.title}</h4>
-                    <p><strong>Category:</strong> ${video.category}</p>
-                    <p><strong>Size:</strong> ${video.fileSize || 'Unknown'} • <strong>Duration:</strong> ${video.duration || 'Unknown'}</p>
-                    <p>${video.description}</p>
-                    <div style="display: flex; gap: 10px; margin-top: 10px;">
-                        <button class="btn btn-primary" onclick="playVideo('${video.id}')">👁️ Preview</button>
-                        <button class="btn btn-secondary" onclick="removeVideo(${video.id})">🗑️ Remove</button>
+            adminVideoList.innerHTML = videos.map(video => {
+                const category = categories.find(c => c.name === video.category);
+                const categoryDisplay = category ? category.displayName : video.category;
+                
+                return `
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
+                        <h4>${video.title}</h4>
+                        <p><strong>Category:</strong> ${categoryDisplay}</p>
+                        <p><strong>Size:</strong> ${video.fileSize || 'Unknown'} • <strong>Duration:</strong> ${video.duration || 'Unknown'}</p>
+                        <p>${video.description}</p>
+                        <div style="display: flex; gap: 10px; margin-top: 10px;">
+                            <button class="btn btn-primary" onclick="playVideo('${video.id}')">👁️ Preview</button>
+                            <button class="btn btn-secondary" onclick="removeVideo(${video.id})">🗑️ Remove</button>
+                        </div>
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         function handleAddVideo(e) {
