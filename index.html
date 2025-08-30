@@ -636,6 +636,37 @@
                         <!-- Videos will be populated here -->
                     </div>
                 </div>
+
+                <!-- Data Management Subsection -->
+                <div class="admin-section">
+                    <h3>💾 Data Management</h3>
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                        <h4>Backup & Restore</h4>
+                        <p style="color: #666; margin-bottom: 15px;">
+                            Export your data for backup or import data from a backup file.
+                        </p>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button class="btn btn-primary" id="exportDataBtn">📤 Export Data</button>
+                            <input type="file" id="importFileInput" accept=".json" style="display: none;">
+                            <button class="btn btn-secondary" id="importDataBtn">📥 Import Data</button>
+                        </div>
+                    </div>
+                    
+                    <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                        <h4>⚠️ Reset Data</h4>
+                        <p style="color: #856404; margin-bottom: 15px;">
+                            <strong>Warning:</strong> This will delete all users, categories, and videos, restoring default data.
+                        </p>
+                        <button class="btn btn-secondary" id="resetDataBtn" style="background: #dc3545;">🗑️ Reset All Data</button>
+                    </div>
+
+                    <div style="background: #d1ecf1; padding: 15px; border-radius: 8px;">
+                        <h4>📊 Storage Statistics</h4>
+                        <div id="storageStats">
+                            <!-- Statistics will be populated here -->
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
     </main>
@@ -667,72 +698,302 @@
     </footer>
 
     <script>
-        // Data Storage with sample video files
-        let users = [
-            {
-                id: 1,
-                name: 'Admin User',
-                email: 'admin@edu.com',
-                password: 'admin123',
-                type: 'admin',
-                access: []
-            },
-            {
-                id: 2,
-                name: 'Student Demo',
-                email: 'student@edu.com',
-                password: 'student123',
-                type: 'student',
-                access: ['mathematics', 'science']
+        // Data Storage Manager for persistent data
+        class DataStorage {
+            constructor() {
+                this.STORAGE_KEYS = {
+                    USERS: 'eduplatform_users',
+                    CATEGORIES: 'eduplatform_categories',
+                    VIDEOS: 'eduplatform_videos',
+                    CURRENT_USER: 'eduplatform_current_user',
+                    UPLOADED_FILES: 'eduplatform_uploaded_files',
+                    INITIALIZED: 'eduplatform_initialized'
+                };
+                this.initializeData();
             }
-        ];
 
-        // Categories management
-        let categories = [
-            { id: 1, name: 'mathematics', displayName: 'Mathematics', createdBy: 1 },
-            { id: 2, name: 'science', displayName: 'Science', createdBy: 1 },
-            { id: 3, name: 'english', displayName: 'English', createdBy: 1 },
-            { id: 4, name: 'history', displayName: 'History', createdBy: 1 }
-        ];
-
-        let videos = [
-            {
-                id: 1,
-                title: 'Introduction to Algebra',
-                url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-                category: 'mathematics',
-                description: 'Learn the basics of algebra with step-by-step examples.',
-                addedBy: 1,
-                type: 'file',
-                fileSize: '15.3 MB',
-                duration: '9:56'
-            },
-            {
-                id: 2,
-                title: 'Physics: Newton\'s Laws',
-                url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
-                category: 'science',
-                description: 'Understanding the fundamental laws of motion.',
-                addedBy: 1,
-                type: 'file',
-                fileSize: '12.7 MB',
-                duration: '10:53'
-            },
-            {
-                id: 3,
-                title: 'English Literature Basics',
-                url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-                category: 'english',
-                description: 'Introduction to English literature and analysis techniques.',
-                addedBy: 1,
-                type: 'file',
-                fileSize: '8.9 MB',
-                duration: '0:15'
+            initializeData() {
+                // Check if this is the first time loading the app
+                if (!localStorage.getItem(this.STORAGE_KEYS.INITIALIZED)) {
+                    this.setDefaultData();
+                    localStorage.setItem(this.STORAGE_KEYS.INITIALIZED, 'true');
+                }
             }
-        ];
 
-        let currentUser = null;
-        let uploadedFiles = new Map(); // Store uploaded video files
+            setDefaultData() {
+                // Default users
+                const defaultUsers = [
+                    {
+                        id: 1,
+                        name: 'Admin User',
+                        email: 'admin@edu.com',
+                        password: 'admin123',
+                        type: 'admin',
+                        access: [],
+                        createdAt: new Date().toISOString(),
+                        lastLogin: null
+                    },
+                    {
+                        id: 2,
+                        name: 'Student Demo',
+                        email: 'student@edu.com',
+                        password: 'student123',
+                        type: 'student',
+                        access: ['mathematics', 'science'],
+                        createdAt: new Date().toISOString(),
+                        lastLogin: null
+                    }
+                ];
+
+                // Default categories
+                const defaultCategories = [
+                    { id: 1, name: 'mathematics', displayName: 'Mathematics', createdBy: 1, createdAt: new Date().toISOString() },
+                    { id: 2, name: 'science', displayName: 'Science', createdBy: 1, createdAt: new Date().toISOString() },
+                    { id: 3, name: 'english', displayName: 'English', createdBy: 1, createdAt: new Date().toISOString() },
+                    { id: 4, name: 'history', displayName: 'History', createdBy: 1, createdAt: new Date().toISOString() }
+                ];
+
+                // Default videos
+                const defaultVideos = [
+                    {
+                        id: 1,
+                        title: 'Introduction to Algebra',
+                        url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+                        category: 'mathematics',
+                        description: 'Learn the basics of algebra with step-by-step examples.',
+                        addedBy: 1,
+                        type: 'file',
+                        fileSize: '15.3 MB',
+                        duration: '9:56',
+                        createdAt: new Date().toISOString()
+                    },
+                    {
+                        id: 2,
+                        title: 'Physics: Newton\'s Laws',
+                        url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+                        category: 'science',
+                        description: 'Understanding the fundamental laws of motion.',
+                        addedBy: 1,
+                        type: 'file',
+                        fileSize: '12.7 MB',
+                        duration: '10:53',
+                        createdAt: new Date().toISOString()
+                    },
+                    {
+                        id: 3,
+                        title: 'English Literature Basics',
+                        url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+                        category: 'english',
+                        description: 'Introduction to English literature and analysis techniques.',
+                        addedBy: 1,
+                        type: 'file',
+                        fileSize: '8.9 MB',
+                        duration: '0:15',
+                        createdAt: new Date().toISOString()
+                    }
+                ];
+
+                this.saveUsers(defaultUsers);
+                this.saveCategories(defaultCategories);
+                this.saveVideos(defaultVideos);
+            }
+
+            // Users management
+            getUsers() {
+                try {
+                    return JSON.parse(localStorage.getItem(this.STORAGE_KEYS.USERS)) || [];
+                } catch (e) {
+                    console.error('Error loading users:', e);
+                    return [];
+                }
+            }
+
+            saveUsers(users) {
+                try {
+                    localStorage.setItem(this.STORAGE_KEYS.USERS, JSON.stringify(users));
+                    return true;
+                } catch (e) {
+                    console.error('Error saving users:', e);
+                    return false;
+                }
+            }
+
+            addUser(user) {
+                const users = this.getUsers();
+                user.id = Math.max(...users.map(u => u.id), 0) + 1;
+                user.createdAt = new Date().toISOString();
+                user.lastLogin = null;
+                users.push(user);
+                return this.saveUsers(users);
+            }
+
+            updateUser(userId, updates) {
+                const users = this.getUsers();
+                const userIndex = users.findIndex(u => u.id === userId);
+                if (userIndex !== -1) {
+                    users[userIndex] = { ...users[userIndex], ...updates };
+                    return this.saveUsers(users);
+                }
+                return false;
+            }
+
+            // Current user session
+            getCurrentUser() {
+                try {
+                    const userData = localStorage.getItem(this.STORAGE_KEYS.CURRENT_USER);
+                    return userData ? JSON.parse(userData) : null;
+                } catch (e) {
+                    console.error('Error loading current user:', e);
+                    return null;
+                }
+            }
+
+            setCurrentUser(user) {
+                try {
+                    if (user) {
+                        // Update last login
+                        this.updateUser(user.id, { lastLogin: new Date().toISOString() });
+                        localStorage.setItem(this.STORAGE_KEYS.CURRENT_USER, JSON.stringify(user));
+                    } else {
+                        localStorage.removeItem(this.STORAGE_KEYS.CURRENT_USER);
+                    }
+                    return true;
+                } catch (e) {
+                    console.error('Error saving current user:', e);
+                    return false;
+                }
+            }
+
+            // Categories management
+            getCategories() {
+                try {
+                    return JSON.parse(localStorage.getItem(this.STORAGE_KEYS.CATEGORIES)) || [];
+                } catch (e) {
+                    console.error('Error loading categories:', e);
+                    return [];
+                }
+            }
+
+            saveCategories(categories) {
+                try {
+                    localStorage.setItem(this.STORAGE_KEYS.CATEGORIES, JSON.stringify(categories));
+                    return true;
+                } catch (e) {
+                    console.error('Error saving categories:', e);
+                    return false;
+                }
+            }
+
+            addCategory(category) {
+                const categories = this.getCategories();
+                category.id = Math.max(...categories.map(c => c.id), 0) + 1;
+                category.createdAt = new Date().toISOString();
+                categories.push(category);
+                return this.saveCategories(categories);
+            }
+
+            removeCategory(categoryId) {
+                const categories = this.getCategories();
+                const filtered = categories.filter(c => c.id !== categoryId);
+                return this.saveCategories(filtered);
+            }
+
+            // Videos management
+            getVideos() {
+                try {
+                    return JSON.parse(localStorage.getItem(this.STORAGE_KEYS.VIDEOS)) || [];
+                } catch (e) {
+                    console.error('Error loading videos:', e);
+                    return [];
+                }
+            }
+
+            saveVideos(videos) {
+                try {
+                    localStorage.setItem(this.STORAGE_KEYS.VIDEOS, JSON.stringify(videos));
+                    return true;
+                } catch (e) {
+                    console.error('Error saving videos:', e);
+                    return false;
+                }
+            }
+
+            addVideo(video) {
+                const videos = this.getVideos();
+                video.id = Math.max(...videos.map(v => v.id), 0) + 1;
+                video.createdAt = new Date().toISOString();
+                videos.push(video);
+                return this.saveVideos(videos);
+            }
+
+            removeVideo(videoId) {
+                const videos = this.getVideos();
+                const filtered = videos.filter(v => v.id !== videoId);
+                return this.saveVideos(filtered);
+            }
+
+            // Uploaded files management (for file-based videos)
+            getUploadedFiles() {
+                try {
+                    const filesData = localStorage.getItem(this.STORAGE_KEYS.UPLOADED_FILES);
+                    return filesData ? new Map(JSON.parse(filesData)) : new Map();
+                } catch (e) {
+                    console.error('Error loading uploaded files:', e);
+                    return new Map();
+                }
+            }
+
+            saveUploadedFiles(filesMap) {
+                try {
+                    localStorage.setItem(this.STORAGE_KEYS.UPLOADED_FILES, JSON.stringify([...filesMap]));
+                    return true;
+                } catch (e) {
+                    console.error('Error saving uploaded files:', e);
+                    return false;
+                }
+            }
+
+            // Clear all data (for testing/reset purposes)
+            clearAllData() {
+                Object.values(this.STORAGE_KEYS).forEach(key => {
+                    localStorage.removeItem(key);
+                });
+                this.initializeData();
+            }
+
+            // Export data for backup
+            exportData() {
+                return {
+                    users: this.getUsers(),
+                    categories: this.getCategories(),
+                    videos: this.getVideos(),
+                    exported: new Date().toISOString()
+                };
+            }
+
+            // Import data from backup
+            importData(data) {
+                try {
+                    if (data.users) this.saveUsers(data.users);
+                    if (data.categories) this.saveCategories(data.categories);
+                    if (data.videos) this.saveVideos(data.videos);
+                    return true;
+                } catch (e) {
+                    console.error('Error importing data:', e);
+                    return false;
+                }
+            }
+        }
+
+        // Initialize storage system
+        const storage = new DataStorage();
+
+        // Load data from storage
+        let users = storage.getUsers();
+        let categories = storage.getCategories();
+        let videos = storage.getVideos();
+        let currentUser = storage.getCurrentUser();
+        let uploadedFiles = storage.getUploadedFiles();
 
         // DOM Elements
         const welcomeScreen = document.getElementById('welcomeScreen');
@@ -750,7 +1011,17 @@
 
         // Initialize the application
         function init() {
-            showWelcomeScreen();
+            // Check if user was logged in before refresh
+            if (currentUser) {
+                updateAuthUI();
+                if (currentUser.type === 'admin') {
+                    showAdminPanel();
+                } else {
+                    showUserDashboard();
+                }
+            } else {
+                showWelcomeScreen();
+            }
             setupEventListeners();
         }
 
@@ -792,6 +1063,12 @@
             document.getElementById('closeModal').addEventListener('click', closeVideoModal);
             document.getElementById('downloadVideoBtn').addEventListener('click', downloadCurrentVideo);
             document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+
+            // Data management
+            document.getElementById('exportDataBtn').addEventListener('click', exportData);
+            document.getElementById('importDataBtn').addEventListener('click', () => document.getElementById('importFileInput').click());
+            document.getElementById('importFileInput').addEventListener('change', importData);
+            document.getElementById('resetDataBtn').addEventListener('click', resetAllData);
 
             // Click outside modal to close
             videoModal.addEventListener('click', (e) => {
@@ -858,6 +1135,9 @@
                 name: file.name,
                 size: formatFileSize(file.size)
             });
+
+            // Save uploaded files to storage
+            storage.saveUploadedFiles(uploadedFiles);
 
             // Simulate upload progress
             let progress = 0;
@@ -935,7 +1215,12 @@
 
             if (user) {
                 currentUser = user;
+                storage.setCurrentUser(user); // Save login session
                 updateAuthUI();
+                
+                // Clear form
+                document.getElementById('loginFormElement').reset();
+                
                 if (user.type === 'admin') {
                     showAdminPanel();
                 } else {
@@ -959,7 +1244,6 @@
             }
 
             const newUser = {
-                id: users.length + 1,
                 name: name,
                 email: email,
                 password: password,
@@ -967,13 +1251,20 @@
                 access: []
             };
 
-            users.push(newUser);
-            alert('Registration successful! Please login.');
-            showLoginForm();
+            // Add user to storage
+            if (storage.addUser(newUser)) {
+                users = storage.getUsers(); // Refresh users array
+                document.getElementById('registerFormElement').reset();
+                alert('Registration successful! Please login.');
+                showLoginForm();
+            } else {
+                alert('Failed to create account. Please try again.');
+            }
         }
 
         function logout() {
             currentUser = null;
+            storage.setCurrentUser(null); // Clear login session
             updateAuthUI();
             showWelcomeScreen();
         }
@@ -1158,6 +1449,145 @@
             loadAdminVideoList();
             loadCategoriesForAdmin();
             loadCategoriesList();
+            loadStorageStats();
+        }
+
+        function loadStorageStats() {
+            const statsDiv = document.getElementById('storageStats');
+            const totalUsers = users.length;
+            const totalCategories = categories.length;
+            const totalVideos = videos.length;
+            const adminUsers = users.filter(u => u.type === 'admin').length;
+            const studentUsers = users.filter(u => u.type === 'student').length;
+
+            // Calculate approximate storage usage
+            const dataSize = new Blob([JSON.stringify(storage.exportData())]).size;
+            const formattedSize = formatFileSize(dataSize);
+
+            statsDiv.innerHTML = `
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 24px; font-weight: bold; color: #667eea;">${totalUsers}</div>
+                        <div style="font-size: 12px; color: #666;">Total Users</div>
+                        <div style="font-size: 10px; color: #999;">${adminUsers} Admin, ${studentUsers} Students</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 24px; font-weight: bold; color: #4CAF50;">${totalCategories}</div>
+                        <div style="font-size: 12px; color: #666;">Categories</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 24px; font-weight: bold; color: #ff9800;">${totalVideos}</div>
+                        <div style="font-size: 12px; color: #666;">Videos</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 24px; font-weight: bold; color: #e91e63;">${formattedSize}</div>
+                        <div style="font-size: 12px; color: #666;">Data Size</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Data management functions
+        function exportData() {
+            try {
+                const data = storage.exportData();
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `eduplatform-backup-${new Date().toISOString().split('T')[0]}.json`;
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                
+                URL.revokeObjectURL(url);
+                alert('Data exported successfully!');
+            } catch (error) {
+                console.error('Export error:', error);
+                alert('Failed to export data. Please try again.');
+            }
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (file.type !== 'application/json') {
+                alert('Please select a valid JSON backup file.');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    
+                    if (!data.users || !data.categories || !data.videos) {
+                        throw new Error('Invalid backup file format');
+                    }
+
+                    const confirmMsg = `This will replace all current data with the backup data.\n\nBackup contains:\n- ${data.users.length} users\n- ${data.categories.length} categories\n- ${data.videos.length} videos\n\nContinue?`;
+                    
+                    if (confirm(confirmMsg)) {
+                        if (storage.importData(data)) {
+                            // Refresh all data
+                            users = storage.getUsers();
+                            categories = storage.getCategories();
+                            videos = storage.getVideos();
+                            
+                            // If current user doesn't exist in imported data, log out
+                            if (currentUser && !users.find(u => u.id === currentUser.id)) {
+                                logout();
+                                alert('Data imported successfully! Please log in again.');
+                                return;
+                            }
+                            
+                            // Refresh admin panel
+                            loadAdminContent();
+                            alert('Data imported successfully!');
+                        } else {
+                            throw new Error('Failed to import data');
+                        }
+                    }
+                } catch (error) {
+                    console.error('Import error:', error);
+                    alert('Failed to import data. Please check the file format and try again.');
+                } finally {
+                    // Clear the file input
+                    event.target.value = '';
+                }
+            };
+            
+            reader.readAsText(file);
+        }
+
+        function resetAllData() {
+            const confirmMsg = 'Are you ABSOLUTELY SURE you want to delete ALL data?\n\nThis will remove:\n- All user accounts (except defaults)\n- All categories (restored to defaults)\n- All videos (restored to defaults)\n- All uploaded files\n\nThis action CANNOT be undone!';
+            
+            if (confirm(confirmMsg)) {
+                if (confirm('Last chance! This will permanently delete everything. Continue?')) {
+                    try {
+                        // Clear all storage
+                        storage.clearAllData();
+                        
+                        // Refresh data from storage (will be defaults)
+                        users = storage.getUsers();
+                        categories = storage.getCategories();
+                        videos = storage.getVideos();
+                        uploadedFiles.clear();
+                        
+                        // Log out current user
+                        logout();
+                        
+                        alert('All data has been reset to defaults. Please log in again.');
+                    } catch (error) {
+                        console.error('Reset error:', error);
+                        alert('Failed to reset data. Please try again.');
+                    }
+                }
+            }
         }
 
         function loadCategoriesForAdmin() {
@@ -1235,22 +1665,25 @@
 
             // Add new category
             const newCategory = {
-                id: Math.max(...categories.map(c => c.id), 0) + 1,
                 name: urlFriendlyName,
                 displayName: categoryName,
                 createdBy: currentUser.id
             };
 
-            categories.push(newCategory);
-            
-            // Refresh admin displays
-            loadCategoriesForAdmin();
-            loadCategoriesList();
-            
-            // Clear form
-            document.getElementById('newCategoryName').value = '';
-            
-            alert(`Category "${categoryName}" added successfully!`);
+            if (storage.addCategory(newCategory)) {
+                categories = storage.getCategories(); // Refresh categories array
+                
+                // Refresh admin displays
+                loadCategoriesForAdmin();
+                loadCategoriesList();
+                
+                // Clear form
+                document.getElementById('newCategoryName').value = '';
+                
+                alert(`Category "${categoryName}" added successfully!`);
+            } else {
+                alert('Failed to add category. Please try again.');
+            }
         }
 
         function deleteCategory(categoryId) {
@@ -1265,19 +1698,27 @@
             }
 
             if (confirm(`Are you sure you want to delete the category "${category.displayName}"?`)) {
-                // Remove category
-                categories = categories.filter(c => c.id !== categoryId);
-                
-                // Remove category access from all users
-                users.forEach(user => {
-                    user.access = user.access.filter(access => access !== category.name);
-                });
-                
-                // Refresh admin displays
-                loadCategoriesForAdmin();
-                loadCategoriesList();
-                
-                alert(`Category "${category.displayName}" deleted successfully!`);
+                // Remove category from storage
+                if (storage.removeCategory(categoryId)) {
+                    categories = storage.getCategories(); // Refresh categories array
+                    
+                    // Remove category access from all users
+                    users.forEach(user => {
+                        if (user.access.includes(category.name)) {
+                            user.access = user.access.filter(access => access !== category.name);
+                            storage.updateUser(user.id, { access: user.access });
+                        }
+                    });
+                    users = storage.getUsers(); // Refresh users array
+                    
+                    // Refresh admin displays
+                    loadCategoriesForAdmin();
+                    loadCategoriesList();
+                    
+                    alert(`Category "${category.displayName}" deleted successfully!`);
+                } else {
+                    alert('Failed to delete category. Please try again.');
+                }
             }
         }
 
